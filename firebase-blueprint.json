@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "Founder Profile",
+      "description": "Personal data and stats for Akrit Pandey",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "bio": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "skills": { "type": "array" },
+        "socialLinks": { "type": "object" },
+        "achievements": { "type": "array" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "projectsCompleted": { "type": "number" },
+            "activeProjects": { "type": "number" },
+            "companyValuation": { "type": "number" },
+            "teamSize": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "role"]
+    },
+    "News": {
+      "title": "News Feed Post",
+      "description": "Instagram-style company updates and announcements",
+      "type": "object",
+      "properties": {
+        "headline": { "type": "string" },
+        "subheadline": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrls": { "type": "array" },
+        "fileUrls": { "type": "array" },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "authorId": { "type": "string" }
+      },
+      "required": ["headline", "description", "createdAt"]
+    },
+    "WikiPage": {
+      "title": "Wikipedia Knowledge Base Page",
+      "description": "Editable markdown content for company knowledge base",
+      "type": "object",
+      "properties": {
+        "slug": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["slug", "title", "content"]
+    },
+    "Project": {
+      "title": "Company Project",
+      "description": "Tracks project details, revenue, and status",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "client": { "type": "string" },
+        "value": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Completed", "Pending"] },
+        "teamMembers": { "type": "array" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" }
+      },
+      "required": ["name", "value", "status"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Personnel tracking for Swaraj Digital",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "assignedProjects": { "type": "array" },
+        "performance": { "type": "string" }
+      },
+      "required": ["name", "role"]
+    },
+    "Finance": {
+      "title": "Financial Report",
+      "description": "Profit and Loss tracking per month",
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "revenue": { "type": "number" },
+        "expenses": { "type": "number" },
+        "profit": { "type": "number" }
+      },
+      "required": ["month", "revenue", "expenses"]
+    }
+  },
+  "firestore": {
+    "/profiles/{profileId}": {
+      "schema": "Profile",
+      "description": "Founder profile information"
+    },
+    "/news": {
+      "schema": "News",
+      "description": "Collection of company feed posts"
+    },
+    "/wiki": {
+      "schema": "WikiPage",
+      "description": "Wikipedia knowledge base pages"
+    },
+    "/projects": {
+      "schema": "Project",
+      "description": "Portfolio of company projects"
+    },
+    "/team": {
+      "schema": "TeamMember",
+      "description": "Team roster"
+    },
+    "/finance": {
+      "schema": "Finance",
+      "description": "Monthly financial records"
+    }
+  }
+}

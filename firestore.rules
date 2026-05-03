@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // For this app, only specific email is admin
+      return isSignedIn() && 
+             request.auth.token.email == 'shivashp77059@gmail.com' && 
+             request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Profile Rules ---
+    match /profiles/{profileId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- News Rules ---
+    match /news/{newsId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidNews(request.resource.data);
+      allow update: if isAdmin() && isValidNews(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    function isValidNews(data) {
+      return data.keys().hasAll(['headline', 'description', 'createdAt']) &&
+             data.headline is string && data.headline.size() <= 500 &&
+             data.description is string && data.description.size() <= 5000;
+    }
+
+    // --- Wiki Rules ---
+    match /wiki/{pageId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidWiki(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    function isValidWiki(data) {
+      return data.keys().hasAll(['slug', 'title', 'content']) &&
+             data.slug is string && data.slug.size() <= 128 &&
+             data.title is string && data.title.size() <= 256;
+    }
+
+    // --- Project Rules ---
+    match /projects/{projectId} {
+      allow read: if true; // Public stats are derived from here, projects list is public
+      allow write: if isAdmin() && isValidProject(request.resource.data);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['name', 'value', 'status']) &&
+             data.name is string && data.value is number && data.status is string;
+    }
+
+    // --- Team Rules ---
+    match /team/{memberId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Finance Rules ---
+    match /finance/{recordId} {
+      allow read: if isAdmin(); // Financial data is private
+      allow write: if isAdmin();
+    }
+  }
+}
