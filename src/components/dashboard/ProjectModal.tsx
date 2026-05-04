@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Project } from '../../types';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ExternalLink, Image as ImageIcon, Film, FileText, Trash2, Plus, Calendar, User, Briefcase, DollarSign } from 'lucide-react';
 import { formatCurrency, cn } from '../../lib/utils';
@@ -46,6 +46,20 @@ export default function ProjectModal({ project, isOpen, onClose, isAdmin }: Proj
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!window.confirm(`DANGER: Terminate project "${project.name}"? This will expunge all linked media and records from the registry.`)) return;
+    setIsUpdating(true);
+    try {
+      await deleteDoc(doc(db, 'projects', project.id));
+      console.log(`Project ${project.id} terminated.`);
+      onClose();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `projects/${project.id}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -56,23 +70,34 @@ export default function ProjectModal({ project, isOpen, onClose, isAdmin }: Proj
             initial={{ opacity: 0, scale: 0.95, y: 20 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl"
+            className="relative w-full max-w-4xl bg-white dark:bg-zinc-950 rounded-[1.5rem] sm:rounded-[2.5rem] overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] shadow-2xl"
           >
-            <div className="p-8 md:p-12 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-start">
-              <div className="space-y-2">
+            <div className="p-6 sm:p-8 md:p-12 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-start">
+              <div className="space-y-2 min-w-0 pr-4">
                 <span className={cn(
-                  "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                  "px-3 py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest",
                   project.status === 'Active' ? "bg-primary/10 text-primary" : "bg-green-500/10 text-green-500"
                 )}>
                   {project.status} UNIT
                 </span>
-                <h2 className="text-4xl md:text-5xl font-black font-display tracking-tighter">{project.name}</h2>
+                <h2 className="text-2xl sm:text-4xl md:text-5xl font-black font-display tracking-tighter truncate">{project.name}</h2>
               </div>
-              <button onClick={onClose} className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-2xl hover:scale-110 transition-transform"><X /></button>
+              <div className="flex gap-2 shrink-0">
+                {isAdmin && (
+                  <button 
+                    disabled={isUpdating}
+                    onClick={handleDeleteProject} 
+                    className="p-2 sm:p-3 bg-red-500/10 text-red-500 rounded-xl sm:rounded-2xl hover:bg-red-500 hover:text-white transition-all disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                )}
+                <button onClick={onClose} className="p-2 sm:p-3 bg-gray-100 dark:bg-zinc-800 rounded-xl sm:rounded-2xl hover:scale-110 transition-transform"><X className="w-4 h-4 sm:w-5 sm:h-5" /></button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-12">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 md:p-12 space-y-8 sm:space-y-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12">
                 <div className="space-y-6">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Project Context</h4>
                   <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed font-light">{project.description}</p>

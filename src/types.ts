@@ -67,3 +67,48 @@ export interface FinanceRecord {
   expenses: number;
   profit: number;
 }
+
+export interface Job {
+  id: string;
+  title: string;
+  location: string;
+  type: 'Full-time' | 'Part-time' | 'Contract' | 'Internship';
+  description: string;
+  requirements: string[];
+  salary?: string;
+  status: 'Open' | 'Closed';
+  createdAt: any;
+  image?: string;
+  questions?: string[];
+}
+
+export interface Application {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  resumeUrl: string;
+  status: 'Pending' | 'Reviewing' | 'Interviewing' | 'Accepted' | 'Rejected';
+  createdAt: any;
+  answers: Record<string, string>;
+}
+
+export interface Message {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  content: string;
+  read: boolean;
+  createdAt: any;
+}
+
+export interface UserProfile extends Profile {
+  id: string;
+  email: string;
+  role: 'admin' | 'user' | 'employee';
+  resumeUrl?: string;
+  appliedJobs?: string[];
+}

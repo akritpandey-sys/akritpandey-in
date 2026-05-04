@@ -33,7 +33,9 @@
         "subheadline": { "type": "string" },
         "description": { "type": "string" },
         "imageUrls": { "type": "array" },
+        "featuredImageUrl": { "type": "string" },
         "fileUrls": { "type": "array" },
+        "videoUrls": { "type": "array" },
         "tags": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" },
         "authorId": { "type": "string" }
@@ -93,6 +95,73 @@
         "profit": { "type": "number" }
       },
       "required": ["month", "revenue", "expenses"]
+    },
+    "Job": {
+      "title": "Job Posting",
+      "description": "Position available at the company",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "location": { "type": "string" },
+        "type": { "type": "string", "enum": ["Full-time", "Part-time", "Contract", "Internship"] },
+        "description": { "type": "string" },
+        "salary": { "type": "string" },
+        "image": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "Closed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "requirements": { "type": "array" },
+        "questions": { "type": "array" }
+      },
+      "required": ["title", "location", "type", "description", "status"]
+    },
+    "Application": {
+      "title": "Job Application",
+      "description": "Candidate application for a job mission",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "resumeUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pending", "Reviewing", "Interviewing", "Accepted", "Rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "answers": { "type": "object" }
+      },
+      "required": ["jobId", "userId", "userName", "userEmail", "resumeUrl", "status"]
+    },
+    "Message": {
+      "title": "CRM Signal",
+      "description": "Incoming message or contact request",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "subject", "content", "read"]
+    },
+    "UserProfile": {
+      "title": "User Identity",
+      "description": "Sovereign identity node profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user", "employee"] },
+        "bio": { "type": "string" },
+        "resumeUrl": { "type": "string" },
+        "appliedJobs": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email", "role"]
     }
   },
   "firestore": {
@@ -119,6 +188,22 @@
     "/finance": {
       "schema": "Finance",
       "description": "Monthly financial records"
+    },
+    "/jobs": {
+      "schema": "Job",
+      "description": "Collection of available career nodes"
+    },
+    "/applications": {
+      "schema": "Application",
+      "description": "Registry of candidate applications"
+    },
+    "/messages": {
+      "schema": "Message",
+      "description": "Incoming signal streams"
+    },
+    "/users": {
+      "schema": "UserProfile",
+      "description": "Identity node profiles"
     }
   }
 }

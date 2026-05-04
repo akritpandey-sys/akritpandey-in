@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp, 
+  deleteDoc, 
+  doc, 
+  setDoc 
+} from 'firebase/firestore';
+
+// Debug check for runtime visibility
+if (typeof setDoc === 'undefined') {
+  console.error('[CRITICAL] setDoc is not defined in NewsSection module scope');
+}
+
 import { NewsPost } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, X, Calendar, Tag, Trash2, Edit2, ChevronRight, ChevronLeft, Image as ImageIcon, Film, FileText, Upload, Play, ExternalLink } from 'lucide-react';
@@ -10,6 +26,7 @@ import MediaUpload from '../ui/MediaUpload';
 export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
   const [posts, setPosts] = useState<NewsPost[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingPost, setEditingPost] = useState<NewsPost | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newPost, setNewPost] = useState<Partial<NewsPost>>({
     headline: '',
@@ -40,23 +57,40 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'news'), {
-        ...newPost,
-        createdAt: serverTimestamp(),
-      });
+      if (editingPost) {
+        await setDoc(doc(db, 'news', editingPost.id), {
+          ...newPost,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        console.log(`Transmission ${editingPost.id} updated.`);
+      } else {
+        await addDoc(collection(db, 'news'), {
+          ...newPost,
+          createdAt: serverTimestamp(),
+        });
+        console.log("New broadcast deployed.");
+      }
       setNewPost({ headline: '', subheadline: '', description: '', imageUrls: [], videoUrls: [], fileUrls: [], tags: [], featuredImageUrl: '' });
       setShowCreate(false);
+      setEditingPost(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'news');
+      handleFirestoreError(error, OperationType.WRITE, 'news');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleEdit = (post: NewsPost) => {
+    setEditingPost(post);
+    setNewPost({ ...post });
+    setShowCreate(true);
+  };
+
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this Intelligence Briefing?')) {
+    if (window.confirm('CRITICAL: Terminate this Intelligence Briefing? This will remove it from all feeds.')) {
       try {
         await deleteDoc(doc(db, 'news', id));
+        console.log(`News post ${id} terminated.`);
       } catch (error) {
         handleFirestoreError(error, OperationType.DELETE, `news/${id}`);
       }
@@ -64,12 +98,16 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
   };
 
   const handleMediaUpload = (url: string, type: 'image' | 'video' | 'file', name: string) => {
+    console.log(`Media received: ${url} (${type})`);
     if (type === 'image') {
-      setNewPost(prev => ({
-        ...prev,
-        imageUrls: [...(prev.imageUrls || []), url],
-        featuredImageUrl: prev.featuredImageUrl || url 
-      }));
+      setNewPost(prev => {
+        const imageUrls = [...(prev.imageUrls || []), url];
+        return {
+          ...prev,
+          imageUrls,
+          featuredImageUrl: prev.featuredImageUrl || url 
+        };
+      });
     } else if (type === 'video') {
       setNewPost(prev => ({
         ...prev,
@@ -111,16 +149,20 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-12">
-      <div className="flex items-end justify-between">
+    <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
-          <h2 className="text-5xl font-black font-display tracking-tighter mb-2">INTELLIGENCE BRIEFINGS</h2>
-          <p className="text-gray-500 font-medium tracking-[0.2em] uppercase text-xs">Internal & Public Sovereignty Updates</p>
+          <h2 className="text-3xl sm:text-5xl font-black font-display tracking-tighter mb-2">INTELLIGENCE BRIEFINGS</h2>
+          <p className="text-gray-500 font-medium tracking-[0.2em] uppercase text-[10px] sm:text-xs">Internal & Public Sovereignty Updates</p>
         </div>
         {isAdmin && !showCreate && (
           <button 
-            onClick={() => setShowCreate(true)}
-            className="group flex items-center gap-3 bg-primary text-white px-8 py-4 rounded-2xl text-sm font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+            onClick={() => {
+              setEditingPost(null);
+              setNewPost({ headline: '', subheadline: '', description: '', imageUrls: [], videoUrls: [], fileUrls: [], tags: [], featuredImageUrl: '' });
+              setShowCreate(true);
+            }}
+            className="group flex items-center justify-center gap-3 bg-primary text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all w-full sm:w-auto"
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
             NEW BROADCAST
@@ -137,13 +179,16 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
             className="glass-card p-10 border-primary/20"
           >
             <form onSubmit={handleSubmit} className="space-y-8">
+              <h3 className="text-2xl font-black font-display uppercase tracking-tight italic border-b border-gray-100 dark:border-zinc-800 pb-4">
+                {editingPost ? 'Modifying' : 'Deploying'} Transmission Node
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
                     <label className="text-[10px] font-black tracking-widest uppercase text-gray-500 mb-2 block">Headline</label>
                     <input 
                       type="text" 
-                      value={newPost.headline}
+                      value={newPost.headline || ''}
                       onChange={e => setNewPost({...newPost, headline: e.target.value})}
                       className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 focus:ring-2 focus:ring-primary outline-none text-xl font-bold"
                       placeholder="Transmission Title..."
@@ -152,7 +197,7 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
                   <div>
                     <label className="text-[10px] font-black tracking-widest uppercase text-gray-500 mb-2 block">Content</label>
                     <textarea 
-                      value={newPost.description}
+                      value={newPost.description || ''}
                       onChange={e => setNewPost({...newPost, description: e.target.value})}
                       className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl p-4 focus:ring-2 focus:ring-primary outline-none min-h-[200px]"
                       placeholder="Share the full details of the briefing..."
@@ -210,7 +255,7 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
                     <div className="flex gap-2">
                       <input 
                         type="text" 
-                        value={tagInput}
+                        value={tagInput || ''}
                         onChange={e => setTagInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
                         className="flex-1 bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm"
@@ -223,8 +268,10 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
               </div>
 
               <div className="flex justify-end gap-4 pt-6 border-t border-gray-100 dark:border-zinc-800">
-                <button type="button" onClick={() => setShowCreate(false)} className="px-8 py-4 text-sm font-bold text-gray-500 uppercase tracking-widest">Abort</button>
-                <button type="submit" disabled={isSubmitting} className="px-10 py-4 bg-primary text-white rounded-2xl text-sm font-black disabled:opacity-50">PUBLISH</button>
+                <button type="button" onClick={() => { setShowCreate(false); setEditingPost(null); }} className="px-8 py-4 text-sm font-bold text-gray-500 uppercase tracking-widest">Abort</button>
+                <button type="submit" disabled={isSubmitting} className="px-10 py-4 bg-primary text-white rounded-2xl text-sm font-black disabled:opacity-50">
+                  {editingPost ? 'UPDATE FEED' : 'PUBLISH'}
+                </button>
               </div>
             </form>
           </motion.div>
@@ -233,14 +280,14 @@ export default function NewsSection({ isAdmin }: { isAdmin: boolean }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {posts.map((post) => (
-          <NewsCard key={post.id} post={post} isAdmin={isAdmin} onDelete={handleDelete} />
+          <NewsCard key={post.id} post={post} isAdmin={isAdmin} onDelete={handleDelete} onEdit={handleEdit} />
         ))}
       </div>
     </div>
   );
 }
 
-function NewsCard({ post, isAdmin, onDelete }: { post: NewsPost, isAdmin: boolean, onDelete: (id: string) => void }) {
+function NewsCard({ post, isAdmin, onDelete, onEdit }: { post: NewsPost, isAdmin: boolean, onDelete: (id: string) => void, onEdit: (post: NewsPost) => void }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
@@ -272,21 +319,26 @@ function NewsCard({ post, isAdmin, onDelete }: { post: NewsPost, isAdmin: boolea
           <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">{post.description}</p>
           <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-primary pt-2 border-t border-gray-100 dark:border-zinc-800">
             <span>READ BRIEFING</span>
-            {isAdmin && <button onClick={(e) => { e.stopPropagation(); onDelete(post.id); }} className="text-red-500 hover:scale-110 transition-transform"><Trash2 size={14} /></button>}
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button onClick={(e) => { e.stopPropagation(); onEdit(post); }} className="text-gray-400 hover:text-primary hover:scale-110 transition-transform"><Edit2 size={14} /></button>
+                <button onClick={(e) => { e.stopPropagation(); onDelete(post.id); }} className="text-red-500 hover:scale-110 transition-transform"><Trash2 size={14} /></button>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
 
       <AnimatePresence>
         {isExpanded && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-6 md:p-10">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={() => setIsExpanded(false)} />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative w-full max-w-6xl bg-white dark:bg-zinc-950 rounded-[3rem] overflow-hidden flex flex-col md:flex-row max-h-[90vh] shadow-2xl">
-              <button onClick={() => setIsExpanded(false)} className="absolute top-6 right-6 z-[110] p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all group">
-                <X className="group-hover:rotate-90 transition-transform" />
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative w-full max-w-6xl bg-white dark:bg-zinc-950 rounded-[2rem] md:rounded-[3rem] overflow-hidden flex flex-col md:flex-row max-h-[95vh] sm:max-h-[90vh] shadow-2xl">
+              <button onClick={() => setIsExpanded(false)} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-[110] p-2 sm:p-4 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all group">
+                <X className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-90 transition-transform" />
               </button>
               
-              <div className="w-full md:w-2/3 bg-black flex items-center justify-center relative group/media overflow-hidden min-h-[300px]">
+              <div className="w-full md:w-2/3 bg-black flex items-center justify-center relative group/media overflow-hidden min-h-[50vh] sm:min-h-[300px]">
                 {allVisualMedia.length > 0 && (
                   <>
                     <div className="w-full h-full flex items-center justify-center">
@@ -306,19 +358,19 @@ function NewsCard({ post, isAdmin, onDelete }: { post: NewsPost, isAdmin: boolea
                 )}
               </div>
               
-              <div className="w-full md:w-1/3 p-10 md:p-12 overflow-y-auto bg-white dark:bg-zinc-950">
-                <div className="space-y-8">
+              <div className="w-full md:w-1/3 p-6 sm:p-10 md:p-12 overflow-y-auto bg-white dark:bg-zinc-950">
+                <div className="space-y-6 sm:space-y-8">
                    <div className="space-y-2">
                      <div className="flex flex-wrap gap-2">
                        {post.tags.map(tag => (
-                         <span key={tag} className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{tag}</span>
+                         <span key={tag} className="text-[8px] sm:text-[10px] font-black text-primary uppercase tracking-[0.2em]">{tag}</span>
                        ))}
                      </div>
-                     <h2 className="text-4xl font-black font-display tracking-tight leading-tight">{post.headline}</h2>
+                     <h2 className="text-2xl sm:text-4xl font-black font-display tracking-tight leading-tight">{post.headline}</h2>
                    </div>
-                   <p className="text-zinc-600 dark:text-zinc-400 text-lg leading-relaxed whitespace-pre-wrap font-light">{post.description}</p>
+                   <p className="text-zinc-600 dark:text-zinc-400 text-base sm:text-lg leading-relaxed whitespace-pre-wrap font-light">{post.description}</p>
                    {post.fileUrls && post.fileUrls.length > 0 && (
-                     <div className="space-y-4 pt-8 border-t border-gray-100 dark:border-zinc-800">
+                     <div className="space-y-4 pt-6 sm:pt-8 border-t border-gray-100 dark:border-zinc-800">
                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Resource Access</p>
                         {post.fileUrls.map((url, i) => (
                           <a key={i} href={url} target="_blank" className="flex items-center justify-between p-4 bg-gray-50 dark:bg-zinc-900 rounded-2xl hover:bg-primary/5 transition-colors group">

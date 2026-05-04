@@ -7,8 +7,9 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
-storage.maxUploadRetryTime = 60000; // 1 minute max retry
+export const storage = getStorage(app, firebaseConfig.storageBucket);
+storage.maxUploadRetryTime = 300000; // 5 minutes
+storage.maxOperationRetryTime = 300000; // 5 minutes
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {

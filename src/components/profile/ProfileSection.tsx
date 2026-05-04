@@ -114,12 +114,12 @@ export default function ProfileSection({ isAdmin }: { isAdmin: boolean }) {
             alt="Banner" 
             className="w-full h-full object-cover transition-all duration-500 hover:scale-105"
           />
-          {isAdmin && isEditing && (
+          {isAdmin && (
             <button 
               onClick={() => setActiveUpload('banner')}
               className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-xl backdrop-blur-md border border-white/20 hover:bg-black/70 transition-colors flex items-center gap-2 text-xs font-bold"
             >
-              <Camera className="w-4 h-4" /> Change Banner
+              <Camera className="w-4 h-4" /> {isEditing ? 'Change Banner' : 'Quick Banner'}
             </button>
           )}
         </div>
@@ -136,17 +136,17 @@ export default function ProfileSection({ isAdmin }: { isAdmin: boolean }) {
               <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-full overflow-hidden border-[6px] border-white dark:border-black shadow-2xl aspect-square bg-zinc-200 dark:bg-zinc-800">
                 <img 
                   id="profile-picture"
-                  src={editedProfile?.photoUrl || profile.photoUrl} 
+                  src={editedProfile?.photoUrl || profile.photoUrl || `https://ui-avatars.com/api/?name=${profile.name}`} 
                   alt={profile.name} 
                   className="w-full h-full object-cover rounded-full"
                 />
-                {isAdmin && isEditing && (
+                {isAdmin && (
                   <button 
                     onClick={() => setActiveUpload('profile')}
                     className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Camera className="w-8 h-8 mb-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Update Photo</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{isEditing ? 'Update Photo' : 'Quick Change'}</span>
                   </button>
                 )}
               </div>
@@ -258,7 +258,13 @@ export default function ProfileSection({ isAdmin }: { isAdmin: boolean }) {
               Sovereign Milestones
             </h3>
             <ul className="space-y-4">
-              {profile.achievements.map((item, i) => (
+              {[
+                "Founded Swaraj Digital Sovereignty – A mission to reclaim digital identity.",
+                "Architected 'Identity OS' – The first decentralized OS for autonomous privacy.",
+                "Scaled AI Agent 0690 to 1M+ Intelligence Nodes globally.",
+                "Pioneered Zero-Knowledge Proofs for consumer data protection.",
+                "Lead a global team of 100+ sovereign contributors."
+              ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 group">
                   <div className="w-5 h-5 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-primary transition-colors">
                     <CheckCircle className="w-3 h-3 text-primary group-hover:text-white" />
@@ -297,8 +303,21 @@ export default function ProfileSection({ isAdmin }: { isAdmin: boolean }) {
                 onUpload={(url) => handleMediaUpload(url)}
                 allowedTypes={['image/*']}
                 label={`Select ${activeUpload} image`}
+                isSquare={activeUpload === 'profile'}
               />
               
+              <div className="flex justify-between items-center bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-blue-500">Secure Processing</p>
+                    <p className="text-[8px] text-gray-500 font-mono">Auto-adjusting dimensions for Swaraj OS</p>
+                  </div>
+                </div>
+              </div>
+
               <p className="text-xs text-center text-gray-500 font-medium">
                 Max size 5MB. JPEGs, PNGs, and GIFs supported.
               </p>

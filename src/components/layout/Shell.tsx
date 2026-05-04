@@ -7,20 +7,26 @@ import {
   Users, 
   Shield, 
   Moon, 
-  Sun,
-  Menu,
-  X,
-  LogOut,
-  LogIn,
-  Fingerprint
+  Sun, 
+  Menu, 
+  X, 
+  LogOut, 
+  LogIn, 
+  Fingerprint, 
+  Briefcase, 
+  FileText, 
+  Globe,
+  MessageSquare as MsgIcon,
+  CircleUser as UserCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, loginWithGoogle, logout } from '../../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
-import { Profile } from '../../types';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { Profile, UserProfile } from '../../types';
 import { cn } from '../../lib/utils';
+import ContactModal from '../common/ContactModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -33,21 +39,41 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
   const [isDark, setIsDark] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    const unsubProfile = onSnapshot(doc(db, 'profiles', 'main'), (docSnap) => {
-      if (docSnap.exists()) {
-        setProfile(docSnap.data() as Profile);
-      }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (!u) setUserData(null);
     });
-    return unsubProfile;
+
+    const unsubProfile = onSnapshot(doc(db, 'profiles', 'main'), (snap) => {
+      if (snap.exists()) {
+        setProfile(snap.data() as Profile);
+      }
+    }, (error) => {
+      console.warn("Profile fetch failed:", error);
+    });
+
+    return () => {
+      unsub();
+      unsubProfile();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const unsubUser = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) {
+        setUserData(snap.data() as UserProfile);
+      }
+    }, (err) => handleFirestoreError(err, OperationType.GET, `users/${user.uid}`));
+
+    return unsubUser;
+  }, [user]);
 
   useEffect(() => {
     if (isDark) {
@@ -58,25 +84,30 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
   }, [isDark]);
 
   const navItems = [
+    { id: 'home', label: 'Home', icon: Globe },
     { id: 'profile', label: 'Founder', icon: User },
-    { id: 'news', label: 'Feed', icon: Newspaper },
-    { id: 'wiki', label: 'Wiki', icon: BookOpen },
-    { id: 'dashboard', label: 'Company', icon: LayoutDashboard },
-    { id: 'team', label: 'Team', icon: Users },
+    { id: 'account', label: 'Identity', icon: UserCircle },
+    { id: 'jobs', label: 'Missions', icon: Briefcase },
+    { id: 'news', label: 'Briefing', icon: Newspaper },
+    { id: 'wiki', label: 'Archive', icon: BookOpen },
+    { id: 'dashboard', label: 'Core', icon: LayoutDashboard },
+    { id: 'applications', label: 'Registry', icon: FileText },
+    { id: 'crm', label: 'Signals', icon: MsgIcon },
+    { id: 'team', label: 'Nodes', icon: Users },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-black transition-colors duration-300 overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-card mx-4 my-2 border-none rounded-2xl">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+      <header className="sticky top-0 z-50 glass-card mx-2 sm:mx-4 my-2 border-none rounded-2xl">
+        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary/20 flex items-center justify-center rounded-xl border border-primary/30">
-              <Fingerprint className="w-6 h-6 text-primary" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary/20 flex items-center justify-center rounded-lg sm:rounded-xl border border-primary/30 shrink-0">
+              <Fingerprint className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold font-display leading-tight tracking-tighter">SWARAJ</h1>
-              <p className="text-[10px] uppercase tracking-widest text-primary font-bold opacity-80">Intelligence OS</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold font-display leading-tight tracking-tighter truncate">SWARAJ</h1>
+              <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-primary font-bold opacity-80 truncate">Intelligence OS</p>
             </div>
           </div>
 
@@ -99,6 +130,12 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
           </nav>
 
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setContactOpen(true)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
+            >
+              Connect
+            </button>
             <button
               onClick={() => setIsDark(!isDark)}
               className="p-2 mr-2 rounded-xl h-10 w-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
@@ -109,17 +146,22 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
             {user ? (
               <div className="flex items-center gap-3 ml-2 pl-4 border-l border-gray-200 dark:border-zinc-800">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold leading-none">{profile?.name || user.displayName || 'Admin'}</p>
-                  <p className="text-[10px] text-primary font-black">{isAdmin ? 'AUTHORIZED ADMIN' : 'AUTHORIZED VISITOR'}</p>
+                  <p className="text-xs font-bold leading-none">{userData?.name || user.displayName || 'Authorized Agent'}</p>
+                  <p className="text-[10px] text-primary font-black uppercase tracking-tighter opacity-70">
+                    {isAdmin ? 'Root Privilege' : 'Node Access'}
+                  </p>
                 </div>
-                <div className="relative group">
+                <button 
+                  onClick={() => setActiveTab('account')}
+                  className="relative group cursor-pointer"
+                >
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-accent rounded-full blur opacity-40 group-hover:opacity-100 transition duration-500"></div>
                   <img 
-                    src={profile?.photoUrl || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'A'}`} 
-                    className="relative w-10 h-10 rounded-full border-2 border-white dark:border-black object-cover" 
+                    src={userData?.photoUrl || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || 'A'}`} 
+                    className="relative w-10 h-10 rounded-full border-2 border-white dark:border-black object-cover bg-zinc-100 dark:bg-zinc-900" 
                     alt="Profile" 
                   />
-                </div>
+                </button>
                 <button 
                   onClick={logout}
                   className="p-2 h-10 w-10 flex items-center justify-center hover:text-red-500 transition-all hover:scale-110"
@@ -180,8 +222,10 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-4 md:p-8 pt-4">
-        {children}
+      <main className="max-w-7xl mx-auto p-3 sm:p-6 md:p-8 pt-4 overflow-x-hidden">
+        <div className="w-full h-full">
+          {children}
+        </div>
       </main>
 
       <footer className="py-8 text-center text-gray-400 text-sm">
@@ -193,6 +237,7 @@ export default function Layout({ children, activeTab, setActiveTab, isAdmin }: L
           </div>
         )}
       </footer>
+      <ContactModal isOpen={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   );
 }

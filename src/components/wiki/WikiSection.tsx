@@ -77,7 +77,7 @@ export default function WikiSection({ isAdmin }: { isAdmin: boolean }) {
           </div>
           <div className="relative">
             <Search className="absolute left-4 top-3 text-gray-400 w-4 h-4" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm outline-none" placeholder="Search..." />
+            <input type="text" value={search || ''} onChange={e => setSearch(e.target.value)} className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm outline-none" placeholder="Search..." />
           </div>
           <div className="space-y-2">
             {filteredPages.map(page => (
@@ -96,8 +96,8 @@ export default function WikiSection({ isAdmin }: { isAdmin: boolean }) {
             <div className="glass-card p-8 space-y-6">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 space-y-2">
-                  <input type="text" value={editedPage.title} onChange={e => setEditedPage({ ...editedPage, title: e.target.value })} className="w-full bg-transparent text-4xl font-black font-display outline-none" placeholder="Title" />
-                  <input type="text" value={editedPage.slug} onChange={e => setEditedPage({ ...editedPage, slug: e.target.value })} className="w-full bg-transparent text-gray-500 font-mono text-xs outline-none" placeholder="slug" />
+                  <input type="text" value={editedPage.title || ''} onChange={e => setEditedPage({ ...editedPage, title: e.target.value })} className="w-full bg-transparent text-4xl font-black font-display outline-none" placeholder="Title" />
+                  <input type="text" value={editedPage.slug || ''} onChange={e => setEditedPage({ ...editedPage, slug: e.target.value })} className="w-full bg-transparent text-gray-500 font-mono text-xs outline-none" placeholder="slug" />
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setShowImageUpload(true)} className="p-3 bg-gray-100 dark:bg-zinc-900 rounded-xl"><ImageIcon size={20} /></button>
@@ -105,7 +105,7 @@ export default function WikiSection({ isAdmin }: { isAdmin: boolean }) {
                   <button onClick={() => setIsEditing(false)} className="px-4 py-3 bg-gray-100 rounded-xl font-bold">X</button>
                 </div>
               </div>
-              <textarea value={editedPage.content} onChange={e => setEditedPage({ ...editedPage, content: e.target.value })} className="w-full h-[600px] bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 font-mono outline-none" />
+              <textarea value={editedPage.content || ''} onChange={e => setEditedPage({ ...editedPage, content: e.target.value })} className="w-full h-[600px] bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 font-mono outline-none" />
             </div>
           ) : activePage ? (
             <div className="glass-card p-12 space-y-10">

@@ -10,7 +10,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   TrendingUp, TrendingDown, Target, Zap, 
   Wallet, PieChart as PieIcon, ArrowUpRight, 
-  Layers, Plus, Edit2, Save, ExternalLink, X 
+  Layers, Plus, Edit2, Save, ExternalLink, X,
+  Users, Briefcase, FileText, Newspaper
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import ProjectModal from './ProjectModal';
@@ -18,6 +19,7 @@ import ProjectModal from './ProjectModal';
 export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [finance, setFinance] = useState<FinanceRecord[]>([]);
+  const [stats, setStats] = useState({ users: 120, jobs: 15, apps: 45, news: 6 });
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   
@@ -61,7 +63,9 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
           { name: "Zero-Knowledge Proofs System", client: "Privacy", value: 400000, status: "Active", description: "Verification protocols that maintain complete data anonymity." },
           { name: "Quantum-Resistant Encryption", client: "Deep Tech", value: 425000, status: "Active", description: "Post-quantum cryptographic standards implementation." },
           { name: "Global Intelligence Dashboard", client: "Defense", value: 450000, status: "Active", description: "Real-time visualization of global sovereignty metrics." },
-          { name: "Sovereign AI Core", client: "Core Tech", value: 500000, status: "Active", description: "The central intelligence system for Swaraj Digital operations." }
+          { name: "Sovereign AI Core", client: "Core Tech", value: 500000, status: "Active", description: "The central intelligence system for Swaraj Digital operations." },
+          { name: "Decentralized Autonomous Hub", client: "Hub Systems", value: 550000, status: "Active", description: "Central node for community-led project management and resource allocation." },
+          { name: "Post-Sovereign Identity Layer", client: "Privacy OS", value: 600000, status: "Active", description: "Next-gen identity protocol focused on absolute user anonymity and zero-knowledge proof verification." }
         ];
 
         seedProjects.forEach(async (p) => {
@@ -85,6 +89,24 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
       handleFirestoreError(error, OperationType.GET, 'projects');
     });
 
+    const unsubApps = onSnapshot(collection(db, 'applications'), (snapshot) => {
+      setStats(prev => ({ ...prev, apps: snapshot.size }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'applications');
+    });
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      setStats(prev => ({ ...prev, users: snapshot.size }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'users');
+    });
+
+    const unsubJobs = onSnapshot(collection(db, 'jobs'), (snapshot) => {
+      setStats(prev => ({ ...prev, jobs: snapshot.size }));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'jobs');
+    });
+
     let unsubFinance: (() => void) | undefined;
     
     if (isAdmin) {
@@ -97,6 +119,9 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
 
     return () => { 
       unsubProjects(); 
+      unsubApps();
+      unsubUsers();
+      unsubJobs();
       if (unsubFinance) unsubFinance();
     };
   }, [isAdmin]);
@@ -119,6 +144,11 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
   const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
   const completedProjectsCount = projects.filter(p => p.status === 'Completed').length;
   
+  const avgProjectValue = projects.length > 0 ? totalRevenue / projects.length : 0;
+  const targetValuation = 378887732;
+  // Dynamic valuation centering around target based on project performance
+  const companyValuation = targetValuation + (avgProjectValue * activeProjectsCount * 0.05); 
+  
   const COLORS = ['#06b6d4', '#f59e0b', '#10b981', '#6366f1'];
 
   const projectStatusData = [
@@ -129,6 +159,26 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div className="space-y-6">
+      {/* Sovereignty Hub Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Active Nodes (Users)', value: stats.users, icon: Users, color: 'text-blue-500' },
+          { label: 'Recruitment Missions', value: stats.jobs, icon: Briefcase, color: 'text-purple-500' },
+          { label: 'Pending Applications', value: stats.apps, icon: FileText, color: 'text-orange-500' },
+          { label: 'Global Briefings', value: stats.news, icon: Newspaper, color: 'text-green-500' },
+        ].map((s) => (
+          <div key={s.label} className="glass-card p-4 flex items-center gap-4">
+            <div className={cn("p-2 rounded-lg bg-gray-100 dark:bg-zinc-800", s.color)}>
+              <s.icon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase text-gray-500 tracking-wider leading-none mb-1">{s.label}</p>
+              <h4 className="text-xl font-black font-display">{s.value}</h4>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* Analytics Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div 
@@ -138,7 +188,7 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
           <div className="flex items-center justify-between relative z-10">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Company Valuation</p>
-              <h3 className="text-3xl font-black font-display">{formatCurrency(totalRevenue * 5)}</h3>
+              <h3 className="text-3xl font-black font-display">{formatCurrency(companyValuation)}</h3>
               <p className="text-xs text-green-500 font-bold flex items-center gap-1 mt-2">
                 <ArrowUpRight className="w-3 h-3" /> 12% Growth this Q
               </p>
@@ -334,22 +384,22 @@ export default function CompanyDashboard({ isAdmin }: { isAdmin: boolean }) {
               </div>
               <form onSubmit={handleAddProject} className="space-y-4">
                 <input 
-                  type="text" placeholder="Project Name" value={newProject.name} 
+                  type="text" placeholder="Project Name" value={newProject.name || ''} 
                   onChange={e => setNewProject({...newProject, name: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 outline-none"
                 />
                 <input 
-                  type="text" placeholder="Client" value={newProject.client} 
+                  type="text" placeholder="Client" value={newProject.client || ''} 
                   onChange={e => setNewProject({...newProject, client: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 outline-none"
                 />
                 <textarea 
-                  placeholder="Intelligence Context..." value={newProject.description} 
+                  placeholder="Intelligence Context..." value={newProject.description || ''} 
                   onChange={e => setNewProject({...newProject, description: e.target.value})}
                   className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 outline-none min-h-[100px]"
                 />
                 <input 
-                  type="number" placeholder="Contract Value" value={newProject.value} 
+                  type="number" placeholder="Contract Value" value={newProject.value || 0} 
                   onChange={e => setNewProject({...newProject, value: Number(e.target.value)})}
                   className="w-full bg-gray-50 dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-xl p-3 outline-none"
                 />

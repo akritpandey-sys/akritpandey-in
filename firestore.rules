@@ -6,13 +6,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Global helpers
+    // --- Global Helpers ---
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      // For this app, only specific email is admin
+      // Primary Admin Identity
       return isSignedIn() && 
              request.auth.token.email == 'shivashp77059@gmail.com' && 
              request.auth.token.email_verified == true;
@@ -22,7 +22,19 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // --- Profile Rules ---
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Profile Rules (Founder) ---
     match /profiles/{profileId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -31,22 +43,19 @@ service cloud.firestore {
     // --- News Rules ---
     match /news/{newsId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidNews(request.resource.data);
-      allow update: if isAdmin() && isValidNews(request.resource.data);
-      allow delete: if isAdmin();
+      allow write: if isAdmin() && isValidNews(incoming());
     }
 
     function isValidNews(data) {
       return data.keys().hasAll(['headline', 'description', 'createdAt']) &&
              data.headline is string && data.headline.size() <= 500 &&
-             data.description is string && data.description.size() <= 5000;
+             data.description is string && data.description.size() <= 10000;
     }
 
     // --- Wiki Rules ---
     match /wiki/{pageId} {
       allow read: if true;
-      allow create, update: if isAdmin() && isValidWiki(request.resource.data);
-      allow delete: if isAdmin();
+      allow write: if isAdmin() && isValidWiki(incoming());
     }
 
     function isValidWiki(data) {
@@ -57,8 +66,8 @@ service cloud.firestore {
 
     // --- Project Rules ---
     match /projects/{projectId} {
-      allow read: if true; // Public stats are derived from here, projects list is public
-      allow write: if isAdmin() && isValidProject(request.resource.data);
+      allow read: if true;
+      allow write: if isAdmin() && isValidProject(incoming());
     }
 
     function isValidProject(data) {
@@ -74,8 +83,60 @@ service cloud.firestore {
 
     // --- Finance Rules ---
     match /finance/{recordId} {
-      allow read: if isAdmin(); // Financial data is private
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
+    }
+
+    // --- Job Rules ---
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidJob(incoming());
+    }
+
+    function isValidJob(data) {
+      return data.keys().hasAll(['title', 'location', 'type', 'description', 'status']) &&
+             data.title is string && data.title.size() <= 256 &&
+             data.description is string && data.description.size() <= 5000;
+    }
+
+    // --- Application Rules ---
+    match /applications/{appId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidApplication(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) ||
+                      (isSignedIn() && resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['resumeUrl', 'answers']));
+      allow delete: if isAdmin();
+    }
+
+    function isValidApplication(data) {
+      return data.keys().hasAll(['jobId', 'userId', 'userName', 'userEmail', 'resumeUrl', 'status']) &&
+             data.userId is string && data.userEmail is string &&
+             data.resumeUrl is string && data.resumeUrl.size() <= 1024;
+    }
+
+    // --- Message Rules (CRM) ---
+    match /messages/{messageId} {
+      allow list, delete: if isAdmin();
+      allow get: if isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
+      allow create: if isValidMessage(incoming());
+      allow update: if isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['name', 'email', 'subject', 'content', 'read']) &&
+             data.email is string && data.email.size() <= 256 &&
+             data.content is string && data.content.size() <= 5000;
+    }
+
+    // --- User Profile Rules ---
+    match /users/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow write: if (isAdmin() || isOwner(userId)) && isValidUserProfile(incoming());
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'role']) &&
+             data.id is string && data.email is string &&
+             data.role in ['admin', 'user', 'employee'];
     }
   }
 }
